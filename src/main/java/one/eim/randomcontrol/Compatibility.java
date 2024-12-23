@@ -42,21 +42,30 @@ public final class Compatibility {
 
         createRandom = hasRandomSource
                 ? sneakyThrows(() -> lookup.unreflect(
-                      Arrays.stream(randomSourceClass.getDeclaredMethods())
-                          .filter(m -> m.getReturnType() == randomSourceClass && m.getParameterCount() == 0 && Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers()))
-                          .findFirst()
-                          .orElseThrow(() -> new ExceptionInInitializerError("Failed to locate RandomSource RandomSource.create() method"))
-                      ))
+                Arrays.stream(randomSourceClass.getDeclaredMethods())
+                        .filter(m -> m.getReturnType() == randomSourceClass && m.getParameterCount() == 0 && Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers()))
+                        .findFirst()
+                        .orElseThrow(() -> new ExceptionInInitializerError("Failed to locate RandomSource RandomSource.create() method"))
+        ))
                 : sneakyThrows(() -> lookup.findConstructor(Random.class, MethodType.methodType(void.class)));
 
         randomSetSeed = hasRandomSource
                 ? sneakyThrows(() -> lookup.unreflect(
-                      Arrays.stream(randomSourceClass.getDeclaredMethods())
-                          .filter(m -> m.getReturnType() == void.class && m.getParameterCount() == 1 && m.getParameterTypes()[0] == long.class && Modifier.isPublic(m.getModifiers()))
-                          .findFirst()
-                          .orElseThrow(() -> new ExceptionInInitializerError("Failed to locate RandomSource#setSeed(long) method"))
-                      ))
+                Arrays.stream(randomSourceClass.getDeclaredMethods())
+                        .filter(m -> m.getReturnType() == void.class && m.getParameterCount() == 1 && m.getParameterTypes()[0] == long.class && Modifier.isPublic(m.getModifiers()))
+                        .findFirst()
+                        .orElseThrow(() -> new ExceptionInInitializerError("Failed to locate RandomSource#setSeed(long) method"))
+        ))
                 : sneakyThrows(() -> lookup.unreflect(Random.class.getMethod("setSeed", long.class)));
+
+        Field randomField;
+        try {
+            randomField = entityClass.getDeclaredField("random");
+        } catch (NoSuchFieldException e) {
+            throw new ExceptionInInitializerError("Failed to find Random on Entity. No fields with type RandomSource/Random. Not Paper?");
+        }
+
+        randomField.setAccessible(true);
 
         sharedRandom = sneakyThrows(() -> entityClass.getField("SHARED_RANDOM").get(null));
 
@@ -67,12 +76,6 @@ public final class Compatibility {
 
         craftEntityGetHandle = sneakyThrows(() -> lookup.unreflect(craftEntityClass.getDeclaredMethod("getHandle")));
 
-        final Field randomField = Arrays.stream(entityClass.getDeclaredFields())
-                .filter(f -> f.getType() == (hasRandomSource ? randomSourceClass : Random.class) && !Modifier.isStatic(f.getModifiers()) && !Modifier.isPublic(f.getModifiers()))
-                .findFirst()
-                .orElseThrow(() -> new ExceptionInInitializerError("Failed to find Random on Entity. No fields with type RandomSource/Random. Not Paper?"));
-        randomField.setAccessible(true);
-
         entityGetRandom = sneakyThrows(() -> lookup.unreflectGetter(randomField));
         entitySetRandom = sneakyThrows(() -> lookup.unreflectSetter(randomField));
     }
@@ -81,7 +84,6 @@ public final class Compatibility {
         try {
             final Object wrapped = craftEntityGetHandle.invoke(entity);
 
-            // only set once per entity, hopefully
             if (entityGetRandom.invoke(wrapped) != sharedRandom) {
                 return;
             }
