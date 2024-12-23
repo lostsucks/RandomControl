@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "one.eim"
-version = "1.1.0"
+version = "1.1.1"
 description = "Liberate your server from the RNG loving bourgeoisie! Paper plugin to enable RNG manipulation."
 
 repositories {
