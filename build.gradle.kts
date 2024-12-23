@@ -34,7 +34,7 @@ tasks {
 
 bukkit {
     website = "https://github.com/e-im/RandomCOntrol"
-    authors = listOf("e-im")
+    authors = listOf("e-im", "lostmatter")
     main = "one.eim.randomcontrol.RandomControl"
     apiVersion = "1.13"
 }
